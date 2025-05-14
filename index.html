@@ -8,6 +8,51 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- 애플 산돌고딕 Neo 폰트 대체 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.6/dist/web/static/pretendard.css">
+    
+    <!-- Firebase SDK 추가 -->
+    <script type="module">
+      // Firebase 모듈 가져오기
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+      import * as database from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+      
+      // Firebase 설정
+      const firebaseConfig = {
+        apiKey: "AIzaSyDDODuDp73O8a-fVPdBQSZ8mzyrroOwGt0",
+        authDomain: "gachi-project-d4333.firebaseapp.com",
+        projectId: "gachi-project-d4333",
+        storageBucket: "gachi-project-d4333.firebaseapp.com",
+        messagingSenderId: "551663011021",
+        appId: "1:551663011021:web:abb57f5c80662063be1584",
+        measurementId: "G-2D2Q970JGP",
+        databaseURL: "https://gachi-project-d4333-default-rtdb.firebaseio.com"
+      };
+
+      // Firebase 초기화
+      try {
+        const app = initializeApp(firebaseConfig);
+        const db = database.getDatabase(app);
+        
+        // Firebase 함수를 전역으로 노출
+        window.firebase = {
+          database: db,
+          ref: database.ref,
+          push: database.push,
+          set: database.set,
+          get: database.get,
+          update: database.update,
+          remove: database.remove,
+          onValue: database.onValue,
+          onChildAdded: database.onChildAdded,
+          onChildChanged: database.onChildChanged,
+          onChildRemoved: database.onChildRemoved,
+          child: database.child
+        };
+        
+        console.log('Firebase 초기화 성공');
+      } catch (error) {
+        console.error('Firebase 초기화 오류:', error);
+      }
+    </script>
 </head>
 <body>
     <div class="container">
@@ -20,6 +65,10 @@
             <form id="value-form">
                 <input type="text" id="value-input" placeholder="당신의 가치관을 입력하세요 (예: 성실함, 자유로운 삶)" required>
                 <div id="hashtag-suggestions" class="hashtag-suggestions"></div>
+                <div class="date-option">
+                    <input type="checkbox" id="use-yesterday" name="use-yesterday">
+                    <label for="use-yesterday">어제 작성한 가치관으로 등록하기</label>
+                </div>
                 <button type="submit">등록하기</button>
             </form>
             <p id="submission-limit-message" class="limit-message"></p>
@@ -28,6 +77,7 @@
         <section class="tabs-container">
             <div class="tabs">
                 <button class="tab-btn active" data-tab="all">전체 보기</button>
+                <button class="tab-btn" data-tab="yesterday">어제 등록</button>
                 <button class="tab-btn" data-tab="today">오늘의 TOP 10</button>
                 <button class="tab-btn" data-tab="weekly">주간 TOP</button>
             </div>
@@ -49,6 +99,7 @@
             <div class="value-actions">
                 <button class="like-btn"><i class="fas fa-heart"></i> <span class="like-count">0</span></button>
                 <button class="comment-btn"><i class="fas fa-comment"></i> 댓글</button>
+                <button class="delete-btn" style="display:none;"><i class="fas fa-trash"></i></button>
             </div>
             <div class="comments-section" style="display: none;">
                 <div class="comments-list"></div>
@@ -70,6 +121,25 @@
     
     <!-- 디버깅용 스크립트 -->
     <script>
+        // 콘솔 출력 개선
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        
+        console.log = function(...args) {
+            const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+            originalConsoleLog.apply(console, [`[${timestamp}][INFO]`, ...args]);
+        };
+        
+        console.error = function(...args) {
+            const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+            originalConsoleError.apply(console, [`[${timestamp}][ERROR]`, ...args]);
+        };
+        
+        // 전역 오류 처리
+        window.addEventListener('error', function(event) {
+            console.error('전역 오류 발생:', event.message, 'at', event.filename, 'line', event.lineno);
+        });
+        
         console.log('페이지 로드 완료');
         window.addEventListener('DOMContentLoaded', function() {
             console.log('DOM 로드 완료');
@@ -78,6 +148,7 @@
             console.log('입력 요소:', document.getElementById('value-input'));
             console.log('제출 메시지:', document.getElementById('submission-limit-message'));
             console.log('값 목록:', document.getElementById('values-list'));
+            console.log('use-yesterday 체크박스:', document.getElementById('use-yesterday'));
         });
     </script>
 </body>

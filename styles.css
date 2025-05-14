@@ -104,6 +104,26 @@ header p {
     font-weight: 400;
 }
 
+/* 날짜 옵션 스타일 */
+.date-option {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.date-option input[type="checkbox"] {
+    margin-right: 10px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.date-option label {
+    font-size: 15px;
+    color: #1d1d1f;
+    cursor: pointer;
+}
+
 /* 해시태그 제안 */
 .hashtag-suggestions {
     display: flex;
@@ -355,4 +375,26 @@ header p {
     .values-list {
         grid-template-columns: repeat(2, 1fr);
     }
+}
+
+/* 삭제(휴지통) 버튼 미니멀 스타일 */
+.delete-btn {
+    border: none;
+    background: transparent;
+    padding: 4px;
+    cursor: pointer;
+    outline: none;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.delete-btn i {
+    font-size: 20px;
+    color: #222;
+}
+
+.delete-btn:active {
+    background: #f2f2f2;
 } 

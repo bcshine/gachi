@@ -1,19 +1,108 @@
 // 초기 데이터 및 전역 변수
 const HASHTAG_SUGGESTIONS = ['#성장', '#연대', '#사랑', '#평화', '#자유', '#정의', '#창의', '#지혜', '#성실', '#감사'];
-const DAILY_SUBMISSION_LIMIT = 5;
+const DAILY_SUBMISSION_LIMIT = 1000000; // 사실상 무제한
 let values = [];
 let activeTab = 'all';
 
-// 로컬 스토리지에서 데이터 로드 (안전하게 처리)
-try {
-    const storedValues = localStorage.getItem('values');
-    if (storedValues) {
-        values = JSON.parse(storedValues);
-        console.log('로컬 스토리지에서 데이터 로드 성공:', values.length + '개 항목');
+// DOM 요소
+let valueForm;
+let valueInput;
+let hashtagSuggestions;
+let submissionLimitMessage;
+let valuesList;
+let tabButtons;
+
+// Firebase 참조가 초기화될 때까지 기다리는 함수
+function waitForFirebase(callback) {
+    console.log('Firebase 초기화 대기 중...');
+    let attempts = 0;
+    const maxAttempts = 50; // 5초(50 * 100ms) 후 타임아웃
+    
+    function checkFirebase() {
+        attempts++;
+        if (window.firebase) {
+            console.log('Firebase 객체 감지됨:', window.firebase);
+            
+            // Firebase 객체의 필수 함수들이 제대로 초기화되었는지 확인
+            if (typeof window.firebase.ref === 'function' && 
+                typeof window.firebase.database === 'object' &&
+                typeof window.firebase.get === 'function') {
+                
+                console.log('Firebase 함수 확인 완료. 초기화 성공');
+                callback();
+            } else {
+                console.error('Firebase 객체는 존재하지만 필요한 함수가 없습니다:', 
+                    'ref 타입:', typeof window.firebase.ref,
+                    'database 타입:', typeof window.firebase.database,
+                    'get 타입:', typeof window.firebase.get);
+                
+                if (submissionLimitMessage) {
+                    submissionLimitMessage.textContent = 'Firebase 모듈 오류. 페이지를 새로고침해주세요.';
+                    submissionLimitMessage.style.color = 'red';
+                }
+            }
+        } else if (attempts >= maxAttempts) {
+            console.error('Firebase 초기화 타임아웃. 페이지를 새로 고침해주세요.');
+            // 타임아웃 메시지를 UI에 표시
+            if (submissionLimitMessage) {
+                submissionLimitMessage.textContent = 'Firebase 연결 오류. 페이지를 새로고침해주세요.';
+                submissionLimitMessage.style.color = 'red';
+            }
+        } else {
+            console.log(`Firebase 대기 중... (${attempts}/${maxAttempts})`);
+            setTimeout(checkFirebase, 100);
+        }
     }
-} catch (error) {
-    console.error('로컬 스토리지 데이터 로드 오류:', error);
-    values = [];
+    
+    // Firebase 초기화 확인 시작
+    checkFirebase();
+}
+
+// 초기화 함수
+function init() {
+    try {
+        console.log('앱 초기화 시작');
+        
+        // DOM 요소 초기화
+        initializeDOMElements();
+        
+        if (!valueForm || !valuesList) {
+            console.error('필수 DOM 요소를 찾을 수 없음, 1초 후 다시 시도');
+            setTimeout(init, 1000);
+            return;
+        }
+        
+        renderHashtagSuggestions();
+        
+        // Firebase가 준비되었는지 확인
+        waitForFirebase(() => {
+            try {
+                console.log('Firebase 초기화 완료');
+                loadDataFromFirebase();
+                
+                // 이벤트 리스너 설정
+                console.log('이벤트 리스너 설정');
+                valueForm.addEventListener('submit', handleValueSubmit);
+                valueInput.addEventListener('input', handleValueInput);
+                tabButtons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        activeTab = btn.dataset.tab;
+                        setActiveTab(btn);
+                        renderValues();
+                    });
+                });
+                
+                // Firebase 실시간 업데이트 리스너 설정
+                setupFirebaseListeners();
+            } catch (error) {
+                console.error('Firebase 초기화 후 설정 중 오류:', error);
+            }
+        });
+        
+        console.log('앱 초기화 완료');
+    } catch (error) {
+        console.error('앱 초기화 중 오류:', error);
+    }
 }
 
 // DOM 요소 초기화 함수
@@ -21,69 +110,142 @@ function initializeDOMElements() {
     console.log('DOM 요소 초기화 시작');
     
     // DOM 요소 초기화
-    window.valueForm = document.getElementById('value-form');
-    window.valueInput = document.getElementById('value-input');
-    window.hashtagSuggestions = document.getElementById('hashtag-suggestions');
-    window.submissionLimitMessage = document.getElementById('submission-limit-message');
-    window.valuesList = document.getElementById('values-list');
-    window.tabButtons = document.querySelectorAll('.tab-btn');
+    valueForm = document.getElementById('value-form');
+    valueInput = document.getElementById('value-input');
+    hashtagSuggestions = document.getElementById('hashtag-suggestions');
+    submissionLimitMessage = document.getElementById('submission-limit-message');
+    valuesList = document.getElementById('values-list');
+    tabButtons = document.querySelectorAll('.tab-btn');
     
     // 요소 존재 확인
-    if (!window.valueForm) console.error('value-form을 찾을 수 없음');
-    if (!window.valueInput) console.error('value-input을 찾을 수 없음');
-    if (!window.hashtagSuggestions) console.error('hashtag-suggestions를 찾을 수 없음');
-    if (!window.submissionLimitMessage) console.error('submission-limit-message를 찾을 수 없음');
-    if (!window.valuesList) console.error('values-list를 찾을 수 없음');
-    if (!window.tabButtons || window.tabButtons.length === 0) console.error('tab-btn을 찾을 수 없음');
+    if (!valueForm) console.error('value-form을 찾을 수 없음');
+    if (!valueInput) console.error('value-input을 찾을 수 없음');
+    if (!hashtagSuggestions) console.error('hashtag-suggestions를 찾을 수 없음');
+    if (!submissionLimitMessage) console.error('submission-limit-message를 찾을 수 없음');
+    if (!valuesList) console.error('values-list를 찾을 수 없음');
+    if (!tabButtons || tabButtons.length === 0) console.error('tab-btn을 찾을 수 없음');
     
     console.log('DOM 요소 초기화 완료');
 }
 
-// 초기화 함수
-function init() {
-    console.log('앱 초기화 시작');
-    
-    // DOM 요소 초기화
-    initializeDOMElements();
-    
-    if (!window.valueForm || !window.valuesList) {
-        console.error('필수 DOM 요소를 찾을 수 없음, 1초 후 다시 시도');
-        setTimeout(init, 1000);
-        return;
-    }
-    
-    renderHashtagSuggestions();
-    checkSubmissionLimit();
-    renderValues();
-    
-    // 이벤트 리스너 설정
-    console.log('이벤트 리스너 설정');
-    window.valueForm.addEventListener('submit', handleValueSubmit);
-    window.valueInput.addEventListener('input', handleValueInput);
-    window.tabButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            activeTab = btn.dataset.tab;
-            setActiveTab(btn);
-            renderValues();
+// Firebase 실시간 업데이트 리스너 설정
+function setupFirebaseListeners() {
+    try {
+        console.log('Firebase 리스너 설정 시작');
+        if (!window.firebase || !window.firebase.database) {
+            console.error('Firebase 또는 Firebase 데이터베이스가 초기화되지 않았습니다');
+            return;
+        }
+        
+        const valuesRef = firebase.ref(firebase.database, 'values');
+        console.log('valuesRef 생성됨:', valuesRef);
+
+        // 새로운 가치관이 추가될 때
+        firebase.onChildAdded(valuesRef, (snapshot) => {
+            try {
+                const newValue = snapshot.val();
+                newValue.id = snapshot.key;
+                console.log('새 가치관 추가됨:', newValue.id);
+                
+                // 이미 존재하는지 확인 (중복 방지)
+                const existingIndex = values.findIndex(v => v.id === newValue.id);
+                if (existingIndex === -1) {
+                    values.unshift(newValue);
+                    renderValues();
+                }
+            } catch (error) {
+                console.error('onChildAdded 콜백 오류:', error);
+            }
         });
-    });
-    
-    console.log('앱 초기화 완료');
+        
+        // 가치관이 업데이트될 때 (좋아요, 댓글 등)
+        firebase.onChildChanged(valuesRef, (snapshot) => {
+            try {
+                const updatedValue = snapshot.val();
+                updatedValue.id = snapshot.key;
+                console.log('가치관 업데이트됨:', updatedValue.id);
+                
+                const existingIndex = values.findIndex(v => v.id === updatedValue.id);
+                if (existingIndex !== -1) {
+                    values[existingIndex] = updatedValue;
+                    renderValues();
+                }
+            } catch (error) {
+                console.error('onChildChanged 콜백 오류:', error);
+            }
+        });
+        
+        // 가치관이 삭제될 때
+        firebase.onChildRemoved(valuesRef, (snapshot) => {
+            try {
+                const removedId = snapshot.key;
+                console.log('가치관 삭제됨:', removedId);
+                values = values.filter(v => v.id !== removedId);
+                renderValues();
+            } catch (error) {
+                console.error('onChildRemoved 콜백 오류:', error);
+            }
+        });
+        
+        console.log('Firebase 리스너 설정 완료');
+    } catch (error) {
+        console.error('Firebase 리스너 설정 중 오류:', error);
+    }
+}
+
+// Firebase에서 데이터 로드
+function loadDataFromFirebase() {
+    try {
+        console.log('Firebase 데이터 로드 시작');
+        const valuesRef = firebase.ref(firebase.database, 'values');
+
+        firebase.get(valuesRef)
+            .then(snapshot => {
+                try {
+                    if (snapshot.exists()) {
+                        values = [];
+                        snapshot.forEach(childSnapshot => {
+                            const value = childSnapshot.val();
+                            value.id = childSnapshot.key;
+                            values.push(value);
+                        });
+                        
+                        // 최신 항목이 먼저 나오도록 정렬
+                        values.sort((a, b) => new Date(b.date) - new Date(a.date));
+                        
+                        console.log('Firebase에서 데이터 로드 완료:', values.length + '개 항목');
+                        checkSubmissionLimit();
+                        renderValues();
+                    } else {
+                        console.log('Firebase에 데이터가 없습니다.');
+                        values = [];
+                        renderValues();
+                    }
+                } catch (error) {
+                    console.error('Firebase 데이터 처리 중 오류:', error);
+                }
+            })
+            .catch(error => {
+                console.error('Firebase 데이터 로드 오류:', error);
+            });
+    } catch (error) {
+        console.error('Firebase 데이터 로드 시작 중 오류:', error);
+    }
 }
 
 // 해시태그 제안 렌더링
 function renderHashtagSuggestions() {
     console.log('해시태그 제안 렌더링');
-    window.hashtagSuggestions.innerHTML = '';
+    hashtagSuggestions.innerHTML = '';
     HASHTAG_SUGGESTIONS.forEach(tag => {
         const tagElement = document.createElement('span');
         tagElement.classList.add('hashtag');
         tagElement.textContent = tag;
         tagElement.addEventListener('click', () => {
-            window.valueInput.value += ` ${tag}`;
-            window.valueInput.focus();
+            valueInput.value += ` ${tag}`;
+            valueInput.focus();
         });
-        window.hashtagSuggestions.appendChild(tagElement);
+        hashtagSuggestions.appendChild(tagElement);
     });
 }
 
@@ -97,13 +259,25 @@ function handleValueSubmit(e) {
     e.preventDefault();
     console.log('가치관 제출 처리 시작');
     
-    if (!canSubmitToday()) {
-        window.submissionLimitMessage.textContent = `하루 ${DAILY_SUBMISSION_LIMIT}회 한정입니다.`;
+    // Firebase 초기화 확인
+    if (!window.firebase || !window.firebase.database) {
+        console.error('Firebase 객체가 초기화되지 않았습니다');
+        submissionLimitMessage.textContent = 'Firebase 연결 오류. 페이지를 새로고침해주세요.';
+        submissionLimitMessage.style.color = 'red';
+        return;
+    }
+    
+    // 사용자가 어제 날짜로 등록하려는지 확인
+    const yesterdayCheckbox = document.getElementById('use-yesterday');
+    const useYesterdayDate = yesterdayCheckbox ? yesterdayCheckbox.checked : false;
+    
+    if (!useYesterdayDate && !canSubmitToday()) {
+        submissionLimitMessage.textContent = `하루 ${DAILY_SUBMISSION_LIMIT}회 한정입니다.`;
         console.log('제출 제한 초과');
         return;
     }
     
-    const valueText = window.valueInput.value.trim();
+    const valueText = valueInput.value.trim();
     if (!valueText) {
         console.log('빈 입력 감지');
         return;
@@ -125,141 +299,175 @@ function handleValueSubmit(e) {
     console.log('추출된 해시태그:', hashtags);
     console.log('정리된 텍스트:', cleanedText);
     
+    // 사용자 ID 가져오기
+    const userId = getUserId();
+    
+    // 날짜 설정 (어제 날짜 혹은 현재 날짜)
+    let submissionDate = new Date();
+    if (useYesterdayDate) {
+        submissionDate.setDate(submissionDate.getDate() - 1);
+        console.log('어제 날짜로 등록:', submissionDate.toISOString());
+    }
+    
     // 가치관 객체 생성
     const newValue = {
-        id: Date.now().toString(),
         text: cleanedText || valueText, // 해시태그만 있는 경우 원래 텍스트 사용
         hashtags: hashtags,
-        date: new Date().toISOString(),
+        date: submissionDate.toISOString(),
         likes: 0,
-        likedBy: [],
-        comments: []
+        likedBy: {},
+        comments: [],
+        userId: userId
     };
     
     console.log('새 가치관 객체:', newValue);
     
-    // 데이터 저장
-    values.unshift(newValue);
-    saveValues();
-    
-    // 폼 리셋 및 UI 업데이트
-    window.valueInput.value = '';
-    checkSubmissionLimit();
-    renderValues();
-    
-    console.log('가치관 제출 처리 완료');
+    try {
+        // Firebase에 저장 (push로 고유 key 생성!)
+        const valuesRef = firebase.ref(firebase.database, 'values');
+        const newValueRef = firebase.push(valuesRef); // 반드시 push 사용!
+        
+        console.log('데이터 저장 시도:', newValueRef);
+        
+        firebase.set(newValueRef, newValue)
+            .then(() => {
+                console.log('Firebase에 가치관 저장 성공');
+                
+                // 폼 리셋
+                valueInput.value = '';
+                if (yesterdayCheckbox) {
+                    yesterdayCheckbox.checked = false;
+                }
+                checkSubmissionLimit();
+            })
+            .catch(error => {
+                console.error('Firebase 저장 오류:', error);
+                alert('Firebase 저장 오류: ' + error);
+                submissionLimitMessage.textContent = '저장 중 오류가 발생했습니다. 다시 시도해주세요.';
+            });
+    } catch (error) {
+        console.error('Firebase 저장 시도 중 오류:', error);
+        submissionLimitMessage.textContent = '저장 처리 중 오류가 발생했습니다. 다시 시도해주세요.';
+    }
 }
 
-// 하루 제출 수 체크
+// 하루 제출 수 체크 (항상 true 반환)
 function canSubmitToday() {
-    const today = new Date().toDateString();
-    const todaysSubmissions = values.filter(v => {
+    return true;
+}
+
+// 어제 날짜 가져오기
+function getYesterdayDate() {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return yesterday;
+}
+
+// 어제 날짜로 작성된 가치관 가져오기
+function getYesterdayValues() {
+    const userId = getUserId();
+    const yesterday = getYesterdayDate().toDateString();
+    
+    return values.filter(v => {
         try {
             const valueDate = new Date(v.date).toDateString();
-            return valueDate === today;
+            return valueDate === yesterday;
         } catch (error) {
             console.error('날짜 파싱 오류:', error, v);
             return false;
         }
-    }).length;
-    
-    console.log('오늘 제출 수:', todaysSubmissions, '/', DAILY_SUBMISSION_LIMIT);
-    return todaysSubmissions < DAILY_SUBMISSION_LIMIT;
+    });
 }
 
-// 제출 제한 체크 및 UI 업데이트
+// 제출 제한 체크 및 UI 업데이트 (항상 등록 가능하게)
 function checkSubmissionLimit() {
-    if (!canSubmitToday()) {
-        window.submissionLimitMessage.textContent = `오늘은 이미 ${DAILY_SUBMISSION_LIMIT}개의 가치관을 등록했습니다.`;
-        window.valueForm.querySelector('button').disabled = true;
-    } else {
-        const today = new Date().toDateString();
-        const todaysSubmissions = values.filter(v => {
-            try {
-                const valueDate = new Date(v.date).toDateString();
-                return valueDate === today;
-            } catch (error) {
-                console.error('날짜 파싱 오류:', error, v);
-                return false;
-            }
-        }).length;
-        
-        window.submissionLimitMessage.textContent = `오늘 ${todaysSubmissions}/${DAILY_SUBMISSION_LIMIT}개 가치관 등록됨`;
-        window.valueForm.querySelector('button').disabled = false;
-    }
+    submissionLimitMessage.textContent = '';
+    valueForm.querySelector('button').disabled = false;
 }
 
 // 탭 활성화
 function setActiveTab(clickedTab) {
-    window.tabButtons.forEach(btn => btn.classList.remove('active'));
+    tabButtons.forEach(btn => btn.classList.remove('active'));
     clickedTab.classList.add('active');
-}
-
-// 데이터 저장
-function saveValues() {
-    try {
-        localStorage.setItem('values', JSON.stringify(values));
-        console.log('데이터 저장 성공:', values.length + '개 항목');
-    } catch (error) {
-        console.error('데이터 저장 오류:', error);
-    }
 }
 
 // 가치관 렌더링
 function renderValues() {
     console.log('가치관 렌더링 시작');
-    window.valuesList.innerHTML = '';
+    valuesList.innerHTML = '';
     
     let filteredValues = [...values];
     console.log('총 가치관 수:', filteredValues.length);
     
     // 탭에 따른 필터링
-    if (activeTab === 'today') {
-        const today = new Date().toDateString();
-        filteredValues = filteredValues.filter(v => {
-            try {
-                const valueDate = new Date(v.date).toDateString();
-                return valueDate === today;
-            } catch (error) {
-                console.error('날짜 파싱 오류:', error, v);
-                return false;
-            }
-        });
-        // 오늘의 TOP 10으로 제한
-        filteredValues.sort((a, b) => b.likes - a.likes);
-        filteredValues = filteredValues.slice(0, 10);
-        console.log('오늘 TOP 10 필터링 후:', filteredValues.length);
-    } else if (activeTab === 'weekly') {
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        filteredValues = filteredValues.filter(v => {
-            try {
-                const valueDate = new Date(v.date);
-                return valueDate >= weekAgo;
-            } catch (error) {
-                console.error('날짜 파싱 오류:', error, v);
-                return false;
-            }
-        });
-        // 좋아요순 정렬
-        filteredValues.sort((a, b) => b.likes - a.likes);
-        console.log('주간 필터링 후:', filteredValues.length);
+    try {
+        if (activeTab === 'today') {
+            const today = new Date().toDateString();
+            filteredValues = filteredValues.filter(v => {
+                try {
+                    const valueDate = new Date(v.date).toDateString();
+                    return valueDate === today;
+                } catch (error) {
+                    console.error('날짜 파싱 오류:', error, v);
+                    return false;
+                }
+            });
+            // 오늘의 TOP 10으로 제한
+            filteredValues.sort((a, b) => b.likes - a.likes);
+            filteredValues = filteredValues.slice(0, 10);
+            console.log('오늘 TOP 10 필터링 후:', filteredValues.length);
+        } else if (activeTab === 'yesterday') {
+            const yesterday = getYesterdayDate().toDateString();
+            console.log('어제 날짜:', yesterday);
+            filteredValues = filteredValues.filter(v => {
+                try {
+                    const valueDate = new Date(v.date).toDateString();
+                    console.log('비교:', valueDate, yesterday, valueDate === yesterday);
+                    return valueDate === yesterday;
+                } catch (error) {
+                    console.error('날짜 파싱 오류:', error, v);
+                    return false;
+                }
+            });
+            console.log('어제 등록 필터링 후:', filteredValues.length);
+        } else if (activeTab === 'weekly') {
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            filteredValues = filteredValues.filter(v => {
+                try {
+                    const valueDate = new Date(v.date);
+                    return valueDate >= weekAgo;
+                } catch (error) {
+                    console.error('날짜 파싱 오류:', error, v);
+                    return false;
+                }
+            });
+            // 좋아요순 정렬
+            filteredValues.sort((a, b) => b.likes - a.likes);
+            console.log('주간 필터링 후:', filteredValues.length);
+        }
+    } catch (error) {
+        console.error('탭 필터링 중 오류 발생:', error);
     }
     
     if (filteredValues.length === 0) {
-        window.valuesList.innerHTML = '<p class="no-values">표시할 가치관이 없습니다.</p>';
+        valuesList.innerHTML = '<p class="no-values">표시할 가치관이 없습니다.</p>';
         console.log('표시할 가치관 없음');
         return;
     }
     
-    filteredValues.forEach(value => {
-        try {
-            const cardElement = createValueCard(value);
-            window.valuesList.appendChild(cardElement);
-        } catch (error) {
-            console.error('카드 생성 오류:', error, value);
-        }
-    });
+    try {
+        filteredValues.forEach(value => {
+            try {
+                const cardElement = createValueCard(value);
+                valuesList.appendChild(cardElement);
+            } catch (error) {
+                console.error('카드 생성 오류:', error, value);
+            }
+        });
+    } catch (error) {
+        console.error('카드 렌더링 중 오류 발생:', error);
+    }
     
     console.log('가치관 렌더링 완료:', filteredValues.length + '개 렌더링됨');
 }
@@ -302,13 +510,13 @@ function createValueCard(value) {
     
     // 사용자가 이미 좋아요 했는지 확인
     const userId = getUserId();
-    if (value.likedBy && value.likedBy.includes(userId)) {
+    if (value.likedBy && value.likedBy[userId]) {
         likeBtn.classList.add('liked');
     }
     
     // 좋아요 이벤트 설정
     likeBtn.addEventListener('click', () => {
-        handleLike(value.id, likeBtn);
+        handleLike(value.id);
     });
     
     // 댓글 버튼 설정
@@ -332,7 +540,6 @@ function createValueCard(value) {
         if (commentText) {
             addComment(value.id, commentText);
             commentInput.value = '';
-            renderComments(value.id, commentsSection.querySelector('.comments-list'));
         }
     });
     
@@ -342,111 +549,164 @@ function createValueCard(value) {
         btn.addEventListener('click', () => {
             const emoji = btn.dataset.emoji;
             addComment(value.id, emoji);
-            renderComments(value.id, commentsSection.querySelector('.comments-list'));
         });
     });
-    
+
+    // 내가 쓴 글에만 지우기 버튼 보이기
+    const deleteBtn = card.querySelector('.delete-btn');
+    if (value.userId === userId) {
+        deleteBtn.style.display = '';
+        deleteBtn.onclick = () => {
+            if (confirm('정말로 이 가치관을 삭제하시겠습니까?')) {
+                // 반드시 해당 value만 삭제
+                const valueRef = firebase.ref(firebase.database, `values/${value.id}`);
+                firebase.remove(valueRef)
+                    .then(() => {
+                        console.log('가치관 삭제 성공:', value.id);
+                    })
+                    .catch(error => {
+                        console.error('가치관 삭제 오류:', error);
+                        alert('삭제 중 오류가 발생했습니다.');
+                    });
+            }
+        };
+    } else {
+        deleteBtn.style.display = 'none';
+    }
+
     return card;
 }
 
 // 좋아요 처리
-function handleLike(valueId, likeBtn) {
+function handleLike(valueId) {
     const userId = getUserId();
-    const valueIndex = values.findIndex(v => v.id === valueId);
     
-    if (valueIndex < 0) {
-        console.error('좋아요 처리 실패: 해당 ID의 가치관을 찾을 수 없음', valueId);
-        return;
-    }
+    // Firebase에서 현재 value 상태 가져오기
+    const valueRef = firebase.ref(firebase.database, `values/${valueId}`);
     
-    const value = values[valueIndex];
-    
-    // likedBy 배열이 없으면 초기화
-    if (!value.likedBy) value.likedBy = [];
-    
-    // 이미 좋아요 했는지 확인
-    const alreadyLiked = value.likedBy.includes(userId);
-    
-    if (alreadyLiked) {
-        // 좋아요 취소
-        value.likes = Math.max(0, value.likes - 1);
-        value.likedBy = value.likedBy.filter(id => id !== userId);
-        likeBtn.classList.remove('liked');
-        console.log('좋아요 취소:', valueId);
-    } else {
-        // 좋아요 추가
-        value.likes = (value.likes || 0) + 1;
-        value.likedBy.push(userId);
-        likeBtn.classList.add('liked');
-        console.log('좋아요 추가:', valueId);
-    }
-    
-    // 좋아요 수 업데이트
-    likeBtn.querySelector('.like-count').textContent = value.likes;
-    
-    // 데이터 저장
-    saveValues();
+    firebase.get(valueRef)
+        .then(snapshot => {
+            if (snapshot.exists()) {
+                const value = snapshot.val();
+                
+                // likedBy 객체가 없으면 초기화
+                if (!value.likedBy) value.likedBy = {};
+                
+                // 좋아요 처리
+                const alreadyLiked = value.likedBy[userId];
+                
+                if (alreadyLiked) {
+                    // 좋아요 취소
+                    value.likes = Math.max(0, (value.likes || 0) - 1);
+                    delete value.likedBy[userId];
+                    console.log('좋아요 취소:', valueId);
+                } else {
+                    // 좋아요 추가
+                    value.likes = (value.likes || 0) + 1;
+                    value.likedBy[userId] = true;
+                    console.log('좋아요 추가:', valueId);
+                }
+                
+                // Firebase 업데이트
+                return firebase.update(valueRef, {
+                    likes: value.likes,
+                    likedBy: value.likedBy
+                });
+            } else {
+                console.error('좋아요 처리 실패: 해당 ID의 가치관을 찾을 수 없음', valueId);
+            }
+        })
+        .catch(error => {
+            console.error('좋아요 처리 중 오류:', error);
+        });
 }
 
 // 댓글 추가
 function addComment(valueId, commentText) {
-    const valueIndex = values.findIndex(v => v.id === valueId);
+    const userId = getUserId();
     
-    if (valueIndex < 0) {
-        console.error('댓글 추가 실패: 해당 ID의 가치관을 찾을 수 없음', valueId);
-        return;
-    }
+    // Firebase에서 현재 댓글 목록 가져오기
+    const valueRef = firebase.ref(firebase.database, `values/${valueId}`);
     
-    // comments 배열이 없으면 초기화
-    if (!values[valueIndex].comments) values[valueIndex].comments = [];
-    
-    const comment = {
-        id: Date.now().toString(),
-        text: commentText,
-        date: new Date().toISOString()
-    };
-    
-    values[valueIndex].comments.push(comment);
-    saveValues();
-    console.log('댓글 추가:', valueId, commentText);
+    firebase.get(valueRef)
+        .then(snapshot => {
+            if (snapshot.exists()) {
+                const value = snapshot.val();
+                
+                // comments 배열이 없으면 초기화
+                let comments = value.comments || [];
+                
+                // 새 댓글 객체 생성
+                const newComment = {
+                    id: Date.now().toString(),
+                    text: commentText,
+                    userId: userId,
+                    date: new Date().toISOString()
+                };
+                
+                // 댓글 추가
+                comments.push(newComment);
+                
+                // Firebase 업데이트
+                return firebase.update(valueRef, { comments });
+            } else {
+                console.error('댓글 추가 실패: 해당 ID의 가치관을 찾을 수 없음', valueId);
+            }
+        })
+        .then(() => {
+            console.log('댓글 추가 성공:', valueId, commentText);
+            // 댓글 섹션 다시 렌더링
+            const commentsSection = document.querySelector(`#value-${valueId} .comments-section`);
+            if (commentsSection && commentsSection.style.display !== 'none') {
+                renderComments(valueId, commentsSection.querySelector('.comments-list'));
+            }
+        })
+        .catch(error => {
+            console.error('댓글 추가 중 오류:', error);
+        });
 }
 
 // 댓글 렌더링
 function renderComments(valueId, commentsListElement) {
-    const valueIndex = values.findIndex(v => v.id === valueId);
+    // Firebase에서 최신 댓글 데이터 가져오기
+    const valueRef = firebase.ref(firebase.database, `values/${valueId}`);
     
-    if (valueIndex < 0) {
-        console.error('댓글 렌더링 실패: 해당 ID의 가치관을 찾을 수 없음', valueId);
-        return;
-    }
-    
-    // comments 배열이 없으면 초기화
-    if (!values[valueIndex].comments) values[valueIndex].comments = [];
-    
-    const comments = values[valueIndex].comments;
-    commentsListElement.innerHTML = '';
-    
-    if (comments.length === 0) {
-        commentsListElement.innerHTML = '<p class="no-comments">아직 댓글이 없습니다.</p>';
-        return;
-    }
-    
-    comments.forEach(comment => {
-        const commentElement = document.createElement('div');
-        commentElement.classList.add('comment');
-        
-        const commentText = document.createElement('div');
-        commentText.classList.add('comment-text');
-        commentText.textContent = comment.text;
-        
-        const commentDate = document.createElement('div');
-        commentDate.classList.add('comment-date');
-        commentDate.textContent = formatDate(comment.date);
-        
-        commentElement.appendChild(commentText);
-        commentElement.appendChild(commentDate);
-        commentsListElement.appendChild(commentElement);
-    });
+    firebase.get(valueRef)
+        .then(snapshot => {
+            if (snapshot.exists()) {
+                const value = snapshot.val();
+                const comments = value.comments || [];
+                commentsListElement.innerHTML = '';
+                
+                if (comments.length === 0) {
+                    commentsListElement.innerHTML = '<p class="no-comments">아직 댓글이 없습니다.</p>';
+                    return;
+                }
+                
+                comments.forEach(comment => {
+                    const commentElement = document.createElement('div');
+                    commentElement.classList.add('comment');
+                    
+                    const commentText = document.createElement('div');
+                    commentText.classList.add('comment-text');
+                    commentText.textContent = comment.text;
+                    
+                    const commentDate = document.createElement('div');
+                    commentDate.classList.add('comment-date');
+                    commentDate.textContent = formatDate(comment.date);
+                    
+                    commentElement.appendChild(commentText);
+                    commentElement.appendChild(commentDate);
+                    commentsListElement.appendChild(commentElement);
+                });
+            } else {
+                console.error('댓글 렌더링 실패: 해당 ID의 가치관을 찾을 수 없음', valueId);
+            }
+        })
+        .catch(error => {
+            console.error('댓글 렌더링 중 오류:', error);
+            commentsListElement.innerHTML = '<p class="no-comments">댓글을 불러오는 중 오류가 발생했습니다.</p>';
+        });
 }
 
 // 사용자 ID 가져오기 (로컬 스토리지에 저장된 임의의 ID)
@@ -493,5 +753,5 @@ function formatDate(dateString) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded 이벤트 발생, 앱 초기화 시작');
     // 약간의 지연을 두고 초기화 (모든 DOM이 완전히 로드되도록)
-    setTimeout(init, 100);
+    setTimeout(init, 500);
 }); 
