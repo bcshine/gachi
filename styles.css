@@ -3,7 +3,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
 }
 
 body {
@@ -26,6 +26,7 @@ header, .app-header {
     background-color: #ffffff; /* 화이트 배경 */
     color: #1d1d1f;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    border: 3px solid #000000; /* 검정색 테두리 3px로 변경 */
 }
 
 h1 {
@@ -41,6 +42,7 @@ header p {
     font-size: 1.1rem;
     max-width: 500px;
     margin: 0 auto;
+    font-weight: 400;
 }
 
 /* 입력 폼 스타일 */
@@ -50,6 +52,7 @@ header p {
     border-radius: 18px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
     margin-bottom: 25px;
+    /* 테두리 제거 */
 }
 
 #value-form {
@@ -64,6 +67,7 @@ header p {
     border-radius: 12px;
     font-size: 16px;
     transition: all 0.3s;
+    font-weight: 400;
 }
 
 #value-input:focus {
@@ -93,10 +97,11 @@ header p {
     transform: translateY(0);
 }
 
-#submission-limit-message {
+.limit-message {
     color: #bf4800;
     font-size: 14px;
-    margin-top: 8px;
+    margin-top: 10px;
+    font-weight: 400;
 }
 
 /* 해시태그 제안 */
@@ -115,6 +120,7 @@ header p {
     font-size: 14px;
     cursor: pointer;
     transition: all 0.3s;
+    font-weight: 400;
 }
 
 .hashtag-suggestions .hashtag:hover {
@@ -123,14 +129,18 @@ header p {
 }
 
 /* 탭 버튼 */
+.tabs-container {
+    margin-bottom: 25px;
+}
+
 .tabs {
     display: flex;
-    margin-bottom: 25px;
     border-bottom: 1px solid #d2d2d7;
     background-color: #ffffff;
-    border-radius: 18px 18px 0 0;
+    border-radius: 18px;
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    /* 테두리 제거 */
 }
 
 .tab-btn {
@@ -168,6 +178,7 @@ header p {
     overflow: hidden;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
     transition: all 0.3s;
+    /* 테두리 제거 */
 }
 
 .value-card:hover {
@@ -184,6 +195,8 @@ header p {
     font-weight: 600;
     margin-bottom: 15px;
     color: #1d1d1f;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
 }
 
 .value-hashtags {
@@ -199,11 +212,13 @@ header p {
     padding: 5px 12px;
     border-radius: 20px;
     font-size: 12px;
+    font-weight: 400;
 }
 
 .value-date {
     color: #86868b;
     font-size: 13px;
+    font-weight: 400;
 }
 
 .value-actions {
@@ -226,6 +241,7 @@ header p {
     padding: 8px 12px;
     border-radius: 20px;
     font-size: 14px;
+    font-weight: 500;
 }
 
 .like-btn:hover, .comment-btn:hover {
@@ -239,7 +255,7 @@ header p {
 
 /* 댓글 섹션 */
 .comments-section {
-    padding: 20px 30px;
+    padding: 20px 30px 25px;
     border-top: 1px solid #f5f5f7;
     background-color: #fcfcfc;
 }
@@ -255,11 +271,14 @@ header p {
 
 .comment-text {
     margin-bottom: 6px;
+    font-weight: 400;
+    color: #1d1d1f;
 }
 
 .comment-date {
     color: #86868b;
     font-size: 12px;
+    font-weight: 400;
 }
 
 .comment-input {
@@ -274,6 +293,7 @@ header p {
     border: 1px solid #d2d2d7;
     border-radius: 12px;
     font-size: 14px;
+    font-weight: 400;
 }
 
 .comment-input input:focus {
@@ -291,6 +311,7 @@ header p {
     cursor: pointer;
     transition: all 0.3s;
     font-size: 14px;
+    font-weight: 500;
 }
 
 .post-comment-btn:hover {
@@ -302,6 +323,7 @@ header p {
 .reactions {
     display: flex;
     gap: 12px;
+    margin-top: 5px;
 }
 
 .reaction-btn {
@@ -325,6 +347,7 @@ header p {
     text-align: center;
     padding: 30px 0;
     font-size: 16px;
+    font-weight: 400;
 }
 
 /* 반응형 */
