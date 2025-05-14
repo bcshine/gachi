@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>가치관 공유 앱</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>가치관 공유 앱</h1>
+            <p>자신이 중요하게 여기는 가치관을 공유하고 공감해보세요!</p>
+        </header>
+
+        <section class="input-section">
+            <form id="value-form">
+                <input type="text" id="value-input" placeholder="당신의 가치관을 입력하세요 (예: 성실함, 자유로운 삶)" required>
+                <div id="hashtag-suggestions" class="hashtag-suggestions"></div>
+                <button type="submit">등록하기</button>
+            </form>
+            <p id="submission-limit-message"></p>
+        </section>
+
+        <section class="tabs">
+            <button class="tab-btn active" data-tab="all">전체 보기</button>
+            <button class="tab-btn" data-tab="today">오늘의 TOP 10</button>
+            <button class="tab-btn" data-tab="weekly">주간 TOP</button>
+        </section>
+
+        <section class="values-container">
+            <div id="values-list" class="values-list"></div>
+        </section>
+    </div>
+
+    <!-- 가치관 카드 템플릿 -->
+    <template id="value-card-template">
+        <div class="value-card">
+            <div class="value-content">
+                <h3 class="value-text"></h3>
+                <div class="value-hashtags"></div>
+                <div class="value-date"></div>
+            </div>
+            <div class="value-actions">
+                <button class="like-btn"><i class="fas fa-heart"></i> <span class="like-count">0</span></button>
+                <button class="comment-btn"><i class="fas fa-comment"></i> 댓글</button>
+            </div>
+            <div class="comments-section" style="display: none;">
+                <div class="comments-list"></div>
+                <div class="comment-input">
+                    <input type="text" class="comment-text" placeholder="댓글을 입력하세요">
+                    <button class="post-comment-btn">등록</button>
+                </div>
+                <div class="reactions">
+                    <button class="reaction-btn" data-emoji="😊">😊</button>
+                    <button class="reaction-btn" data-emoji="👍">👍</button>
+                    <button class="reaction-btn" data-emoji="😢">😢</button>
+                    <button class="reaction-btn" data-emoji="😮">😮</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script src="app.js"></script>
+</body>
+</html> 

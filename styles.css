@@ -1,0 +1,271 @@
+/* 기본 스타일 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', 'Noto Sans KR', sans-serif;
+}
+
+body {
+    background-color: #f7f7f7;
+    color: #333;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+h1 {
+    color: #3f51b5;
+    margin-bottom: 10px;
+}
+
+/* 입력 폼 스타일 */
+.input-section {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+#value-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#value-input {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+#value-form button {
+    padding: 12px;
+    background-color: #3f51b5;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+#value-form button:hover {
+    background-color: #303f9f;
+}
+
+#submission-limit-message {
+    color: #f44336;
+    font-size: 14px;
+    margin-top: 8px;
+}
+
+/* 해시태그 제안 */
+.hashtag-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.hashtag-suggestions .hashtag {
+    background-color: #e3f2fd;
+    color: #2196f3;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.hashtag-suggestions .hashtag:hover {
+    background-color: #bbdefb;
+}
+
+/* 탭 버튼 */
+.tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.tab-btn {
+    padding: 10px 15px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: #666;
+    transition: color 0.3s;
+}
+
+.tab-btn.active {
+    color: #3f51b5;
+    font-weight: bold;
+    border-bottom: 2px solid #3f51b5;
+}
+
+/* 가치관 카드 스타일 */
+.values-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+.value-card {
+    background-color: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.value-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.value-content {
+    padding: 20px;
+}
+
+.value-text {
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+.value-hashtags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.value-hashtags .hashtag {
+    background-color: #e3f2fd;
+    color: #2196f3;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.value-date {
+    color: #888;
+    font-size: 12px;
+}
+
+.value-actions {
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px solid #eee;
+}
+
+.like-btn, .comment-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.3s;
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+
+.like-btn:hover, .comment-btn:hover {
+    color: #3f51b5;
+    background-color: #f5f5f5;
+}
+
+.like-btn.liked {
+    color: #e91e63;
+}
+
+/* 댓글 섹션 */
+.comments-section {
+    padding: 15px 20px;
+    border-top: 1px solid #eee;
+    background-color: #fafafa;
+}
+
+.comments-list {
+    margin-bottom: 15px;
+}
+
+.comment {
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.comment-text {
+    margin-bottom: 5px;
+}
+
+.comment-date {
+    color: #888;
+    font-size: 12px;
+}
+
+.comment-input {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.comment-input input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.post-comment-btn {
+    padding: 8px 12px;
+    background-color: #3f51b5;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* 리액션 버튼 */
+.reactions {
+    display: flex;
+    gap: 8px;
+}
+
+.reaction-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.reaction-btn:hover {
+    background-color: #eee;
+}
+
+/* 반응형 */
+@media (min-width: 768px) {
+    .values-list {
+        grid-template-columns: repeat(2, 1fr);
+    }
+} 
